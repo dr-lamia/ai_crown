@@ -1,0 +1,41 @@
+
+name: data-ops
+on:
+  push:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/data_ops.yml'
+  schedule:
+    - cron: '0 3 * * *'
+jobs:
+  qc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install deps
+        run: pip install open3d numpy pandas
+      - name: Run QC
+        run: python scripts/qc_metrics.py datasets/processed || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qc_report
+          path: qc_report.csv
+  active-learning:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install deps
+        run: pip install torch open3d
+      - name: Select uncertain
+        run: python scripts/active_learning.py datasets/unlabelled --k 50 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uncertain_cases
+          path: uncertain_cases.json
